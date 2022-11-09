@@ -12,7 +12,13 @@ import { JSDOM, VirtualConsole } from 'jsdom';
 import { Gunzip, createGunzip } from 'zlib';
 
 // import from data types
-import type { PageDimensions, ProxyRequestOptions, PuppeteerOptions, ServerConfigurationOptions, Viewport } from './utils/types.js';
+import type {
+  PageDimensions,
+  ProxyRequestOptions,
+  PuppeteerOptions,
+  ServerConfigurationOptions,
+  Viewport,
+} from './utils/types.js';
 
 // import from utils
 import { isValidURL } from './utils/isValidURL';
@@ -70,8 +76,8 @@ const createServer = ({
   SERVER_ROOT,
   PORT,
   CORS_OPTIONS = { origin: `${SERVER_ROOT}:3000`, credentials: true },
-  COOKIE_SETTING = { },
-  ALLOW_HTTP_PROXY = true
+  COOKIE_SETTING = {},
+  ALLOW_HTTP_PROXY = true,
 }: ServerConfigurationOptions): void => {
   const { align, colorize, combine, printf, timestamp } = format;
   const logger = createLogger({
@@ -87,25 +93,25 @@ const createServer = ({
             minute: '2-digit',
             second: '2-digit',
           });
-        }
+        },
       }),
       align(),
       printf(
         ({ level, message, timestamp }) => `[${timestamp}] ${level}: ${message}`
       ),
-      colorize({ all: true }),
+      colorize({ all: true })
     ),
     transports: [
       new transports.Console({
-        format: combine(
-          colorize()
-        ),
-      })
-    ]
+        format: combine(colorize()),
+      }),
+    ],
   });
 
   if (ALLOW_HTTP_PROXY) {
-    logger.warn('*** Unsecured HTTP websites can now be proxied. Beware of ssrf attacks. See more here https://brightsec.com/blog/ssrf-server-side-request-forgery/');
+    logger.warn(
+      '*** Unsecured HTTP websites can now be proxied. Beware of ssrf attacks. See more here https://brightsec.com/blog/ssrf-server-side-request-forgery/'
+    );
   }
 
   const app = express();
@@ -131,7 +137,9 @@ const createServer = ({
     const url = `${req.query.url}`;
     // ****** first check for malicious URLs
     if (!isValidURL(url, ALLOW_HTTP_PROXY)) {
-      res.status(400).send({ errorMessage: 'Please enter a valid URL and try again.' });
+      res
+        .status(400)
+        .send({ errorMessage: 'Please enter a valid URL and try again.' });
     } else {
       // ****** second check for puppeteer being able to goto url
       let browser: Browser;
@@ -148,18 +156,25 @@ const createServer = ({
 
         // check again if puppeteer's validUrl will pass the test
         if (validUrl !== url && !isValidURL(validUrl, ALLOW_HTTP_PROXY)) {
-          res.status(400).send({ errorMessage: 'Please enter a valid URL and try again.' });
+          res
+            .status(400)
+            .send({ errorMessage: 'Please enter a valid URL and try again.' });
         } else {
           logger.info(`********** NEW REQUEST: ${validUrl}`);
 
           // cookie will only be set when res is sent succesfully
           const oneHour: number = 1000 * 60 * 60;
-          res.cookie('pdftron_proxy_sid', validUrl, { ...COOKIE_SETTING, maxAge: oneHour });
+          res.cookie('pdftron_proxy_sid', validUrl, {
+            ...COOKIE_SETTING,
+            maxAge: oneHour,
+          });
           res.status(200).send({ validUrl });
         }
       } catch (err) {
         logger.error(`/pdftron-proxy ${url}`, err);
-        res.status(400).send({ errorMessage: 'Please enter a valid URL and try again.' });
+        res
+          .status(400)
+          .send({ errorMessage: 'Please enter a valid URL and try again.' });
       } finally {
         try {
           await browser?.close();
@@ -174,7 +189,9 @@ const createServer = ({
   app.get('/pdftron-download', async (req: Request, res: Response) => {
     const url = `${req.query.url}`;
     if (!isValidURL(url, ALLOW_HTTP_PROXY)) {
-      res.status(400).send({ errorMessage: 'Please enter a valid URL and try again.' });
+      res
+        .status(400)
+        .send({ errorMessage: 'Please enter a valid URL and try again.' });
     } else {
       logger.info(`********** DOWNLOAD: ${url}`);
       let browser: Browser;
@@ -182,7 +199,7 @@ const createServer = ({
         browser = await puppeteer.launch(puppeteerOptions);
         const page = await browser.newPage();
         await page.goto(url, {
-          waitUntil: 'domcontentloaded'
+          waitUntil: 'domcontentloaded',
         });
         await page.waitForTimeout(2000);
 
@@ -195,29 +212,45 @@ const createServer = ({
             if (el.nodeType === Node.ELEMENT_NODE) {
               const style = window.getComputedStyle(el);
               // filter hidden/collapsible elements
-              if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0' || style.position === 'fixed' || style.position === 'absolute') {
+              if (
+                style.display === 'none' ||
+                style.visibility === 'hidden' ||
+                style.opacity === '0' ||
+                style.position === 'fixed' ||
+                style.position === 'absolute'
+              ) {
                 return;
               }
               // some elements have undefined clientHeight
               // favor scrollHeight since clientHeight does not include padding
               if (!isNaN(el.scrollHeight) && !isNaN(el.clientHeight)) {
-                sum += (el.clientHeight > 0 ? (el.scrollHeight || el.clientHeight) : el.clientHeight);
+                sum +=
+                  el.clientHeight > 0
+                    ? el.scrollHeight || el.clientHeight
+                    : el.clientHeight;
               }
             }
           });
           return {
-            width: document.body.scrollWidth || document.body.clientWidth || 1440,
+            width:
+              document.body.scrollWidth || document.body.clientWidth || 1440,
             // sum can be less than defaultViewport
             height: sum > 770 ? sum : 770,
           };
         });
 
         const buffer = await page.screenshot({ type: 'png', fullPage: true });
-        res.setHeader('Cache-Control', ['no-cache', 'no-store', 'must-revalidate']);
+        res.setHeader('Cache-Control', [
+          'no-cache',
+          'no-store',
+          'must-revalidate',
+        ]);
         res.status(200).send({ buffer, pageDimensions });
       } catch (err) {
         logger.error(`/pdftron-download ${url}`, err);
-        res.status(400).send({ errorMessage: 'Error taking screenshot from puppeteer' });
+        res
+          .status(400)
+          .send({ errorMessage: 'Error taking screenshot from puppeteer' });
       } finally {
         try {
           await browser?.close();
@@ -249,7 +282,10 @@ const createServer = ({
         document.querySelectorAll(selectors).forEach((el) => {
           if (el.getAttribute('href')) {
             // if favicon is a data URL, new URL() will return the same value
-            const { href: absoluteFaviconURL } = new URL(el.getAttribute('href'), linkToPreview);
+            const { href: absoluteFaviconURL } = new URL(
+              el.getAttribute('href'),
+              linkToPreview
+            );
             // separate valid faviconURL and data faviconURL
             if (isURLAbsolute(absoluteFaviconURL)) {
               faviconValidURLs.push(absoluteFaviconURL);
@@ -264,8 +300,12 @@ const createServer = ({
       getAllFaviconURLs('link[rel="shortcut icon"]');
       const faviconUrl = faviconValidURLs[0] || faviconDataURLs[0] || '';
 
-      const metaSelectors: NodeListOf<HTMLMetaElement> = document.querySelectorAll('meta[name="description"], meta[property="og:description"]');
-      const metaDescription = metaSelectors.length > 0 ? (metaSelectors[0].content || '') : '';
+      const metaSelectors: NodeListOf<HTMLMetaElement> =
+        document.querySelectorAll(
+          'meta[name="description"], meta[property="og:description"]'
+        );
+      const metaDescription =
+        metaSelectors.length > 0 ? metaSelectors[0].content || '' : '';
 
       res.status(200).send({ pageTitle, faviconUrl, metaDescription });
     } catch (err) {
@@ -278,22 +318,25 @@ const createServer = ({
   // // TAKEN FROM: https://stackoverflow.com/a/63602976
   app.use('/', (clientRequest: Request, clientResponse: Response) => {
     const cookiesUrl: string = clientRequest.cookies.pdftron_proxy_sid;
-    logger.info(`Cookies ${cookiesUrl}`);
+    logger.info(`Cookies dassad ${cookiesUrl}`);
     // check again for all requests that go through the proxy server
     if (cookiesUrl && isValidURL(cookiesUrl, ALLOW_HTTP_PROXY)) {
-      const {
-        parsedHost,
-        parsedPort,
-        parsedSSL,
-        pathname
-      } = getHostPortSSL(cookiesUrl, ALLOW_HTTP_PROXY);
+      const { parsedHost, parsedPort, parsedSSL, pathname } = getHostPortSSL(
+        cookiesUrl,
+        ALLOW_HTTP_PROXY
+      );
 
       let newHostName = parsedHost;
       let newPath = clientRequest.url;
 
       const externalURL = newPath.split('/?external-proxy=')[1];
       if (externalURL) {
-        const { hostname, href, origin, pathname: externalURLPathName } = new URL(externalURL);
+        const {
+          hostname,
+          href,
+          origin,
+          pathname: externalURLPathName,
+        } = new URL(externalURL);
         const hrefWithoutOrigin = href.split(origin)[1] || externalURLPathName;
         newHostName = hostname;
         newPath = hrefWithoutOrigin;
@@ -308,12 +351,15 @@ const createServer = ({
         rejectUnauthorized: true, // verify the server's identity
         headers: {
           'User-Agent': clientRequest.headers['user-agent'],
-          'Referer': `${PATH}${pathname}`,
+          Referer: `${PATH}${pathname}`,
           'Accept-Encoding': 'identity', // for amazon to work
-        }
+        },
       };
 
-      const callback = (serverResponse: IncomingMessage, clientResponse: Response) => {
+      const callback = (
+        serverResponse: IncomingMessage,
+        clientResponse: Response
+      ) => {
         // Delete 'x-frame-options': 'SAMEORIGIN'
         // so that the page can be loaded in an iframe
         // https://stackoverflow.com/questions/36628420/nodejs-request-hpe-invalid-header-token
@@ -323,14 +369,17 @@ const createServer = ({
         delete serverResponse.headers['content-security-policy'];
         serverResponse.headers['cross-origin-resource-policy'] = 'cross-origin';
         // 'require-corp' works fine on staging but doesn't on localhost: should use 'credentialless'
-        serverResponse.headers['cross-origin-embedder-policy'] = 'credentialless';
+        serverResponse.headers['cross-origin-embedder-policy'] =
+          'credentialless';
         serverResponse.headers['access-control-allow-origin'] = '*';
 
         // reset cache-control for https://www.keytrudahcp.com
-        serverResponse.headers['cache-control'] = 'max-age=0, public, no-cache, no-store, must-revalidate';
+        serverResponse.headers['cache-control'] =
+          'max-age=0, public, no-cache, no-store, must-revalidate';
         let body = '';
         // Send html content from the proxied url to the browser so that it can spawn new requests.
-        const serverResponseContentType = serverResponse.headers['content-type'];
+        const serverResponseContentType =
+          serverResponse.headers['content-type'];
         if (String(serverResponseContentType).indexOf('text/html') !== -1) {
           serverResponse.on('data', (chunk: string) => {
             body += chunk;
@@ -345,7 +394,10 @@ const createServer = ({
             const virtualDOM = new JSDOM(body, { virtualConsole });
             const { window } = virtualDOM;
             const { document } = window;
-            document.documentElement.style.setProperty('--vh', `${defaultViewportHeightForVH * 0.01}px`);
+            document.documentElement.style.setProperty(
+              '--vh',
+              `${defaultViewportHeightForVH * 0.01}px`
+            );
 
             document.querySelectorAll('link').forEach((el) => {
               const href = el.getAttribute('href');
@@ -354,14 +406,20 @@ const createServer = ({
               }
 
               // filter only CSS links
-              if (el.rel === 'stylesheet' || el.type === 'text/css' || href.endsWith('.css')) {
+              if (
+                el.rel === 'stylesheet' ||
+                el.type === 'text/css' ||
+                href.endsWith('.css')
+              ) {
                 if (!el.dataset.pdftron && isURLAbsolute(href)) {
                   // set this attibute to identify if <link> href has been modified
                   el.setAttribute('data-href', href);
 
                   const absoluteHref = getCorrectHref(href);
                   try {
-                    const { hostname, href, origin, pathname } = new URL(absoluteHref);
+                    const { hostname, href, origin, pathname } = new URL(
+                      absoluteHref
+                    );
                     // pathname doesn't include query and hash; use href.split(origin) to preserve everything
                     const hrefWithoutOrigin = href.split(origin)[1] || pathname;
                     el.setAttribute('data-domain', hostname);
@@ -372,7 +430,10 @@ const createServer = ({
                     } else {
                       // external URLs
                       el.setAttribute('data-pdftron', 'different-domain');
-                      el.setAttribute('href', `/?external-proxy=${absoluteHref}`);
+                      el.setAttribute(
+                        'href',
+                        `/?external-proxy=${absoluteHref}`
+                      );
                       // fix for github Failed to find a valid digest in the integrity attribute
                       if (el.getAttribute('integrity')) {
                         el.setAttribute('integrity', '');
@@ -388,7 +449,10 @@ const createServer = ({
             // replace vh values in inline styles
             document.querySelectorAll('style').forEach((el) => {
               if (regexForVhValue.test(el.innerHTML)) {
-                el.innerHTML = el.innerHTML.replace(regexForVhValue, 'calc($1 * var(--vh))');
+                el.innerHTML = el.innerHTML.replace(
+                  regexForVhValue,
+                  'calc($1 * var(--vh))'
+                );
               }
             });
 
@@ -397,11 +461,23 @@ const createServer = ({
                 // Node.ELEMENT_NODE = 1; Node.TEXT_NODE = 3
                 if (child.nodeType === 1) {
                   // var(--vh) doesn't work in JSDOM
-                  if (child.style.height && regexForVhValue.test(child.style.height)) {
-                    child.style.height = child.style.height.replace(regexForVhValue, '$10px');
+                  if (
+                    child.style.height &&
+                    regexForVhValue.test(child.style.height)
+                  ) {
+                    child.style.height = child.style.height.replace(
+                      regexForVhValue,
+                      '$10px'
+                    );
                   }
-                  if (child.style.minHeight && regexForVhValue.test(child.style.minHeight)) {
-                    child.style.minHeight = child.style.minHeight.replace(regexForVhValue, '$10px');
+                  if (
+                    child.style.minHeight &&
+                    regexForVhValue.test(child.style.minHeight)
+                  ) {
+                    child.style.minHeight = child.style.minHeight.replace(
+                      regexForVhValue,
+                      '$10px'
+                    );
                   }
                 }
 
@@ -431,24 +507,36 @@ const createServer = ({
             const headIndex: number = newBody.indexOf('</head>');
             if (headIndex > 0) {
               if (!/pdftron-css/.test(newBody.substring(0, headIndex))) {
-                newBody = newBody.slice(0, headIndex) + styleTag + newBody.slice(headIndex);
+                newBody =
+                  newBody.slice(0, headIndex) +
+                  styleTag +
+                  newBody.slice(headIndex);
               }
 
               if (!/pdftron-js/.test(newBody.substring(0, headIndex))) {
                 // order: declare global var first, then debounce, then blocknavigation (switching all href) then send text/link data since the latter happens over and over again
-                newBody = newBody.slice(0, headIndex) + globalVarsScript + scriptTags + newBody.slice(headIndex);
+                newBody =
+                  newBody.slice(0, headIndex) +
+                  globalVarsScript +
+                  scriptTags +
+                  newBody.slice(headIndex);
               }
             }
 
             delete serverResponse.headers['content-length'];
-            clientResponse.writeHead(serverResponse.statusCode, serverResponse.headers);
+            clientResponse.writeHead(
+              serverResponse.statusCode,
+              serverResponse.headers
+            );
             clientResponse.end(newBody);
           });
 
           serverResponse.on('error', (e) => {
             logger.error(e);
           });
-        } else if (String(serverResponseContentType).indexOf('text/css') !== -1) {
+        } else if (
+          String(serverResponseContentType).indexOf('text/css') !== -1
+        ) {
           let cssContent = '';
           let externalResponse: IncomingMessage | Gunzip = serverResponse;
           const contentEncoding = serverResponse.headers['content-encoding'];
@@ -466,10 +554,15 @@ const createServer = ({
 
           externalResponse.on('end', () => {
             if (regexForVhValue.test(cssContent)) {
-              cssContent = cssContent.replace(regexForVhValue, 'calc($1 * var(--vh))');
+              cssContent = cssContent.replace(
+                regexForVhValue,
+                'calc($1 * var(--vh))'
+              );
               // need to update content-length after swapping vh values, only for gzip response
               if (contentEncoding?.toLowerCase().includes('gzip')) {
-                serverResponse.headers['content-length'] = `${cssContent.length}`;
+                serverResponse.headers[
+                  'content-length'
+                ] = `${cssContent.length}`;
               } else {
                 delete serverResponse.headers['content-length'];
               }
@@ -477,7 +570,9 @@ const createServer = ({
             // write will only append to existing clientResponse and needed to be piped
             // use writeHead and end for http response
             // use send for express response
-            clientResponse.writeHead(serverResponse.statusCode, serverResponse.headers).end(cssContent);
+            clientResponse
+              .writeHead(serverResponse.statusCode, serverResponse.headers)
+              .end(cssContent);
             // clientResponse.set(serverResponse.headers).send(cssContent);
           });
 
@@ -496,10 +591,13 @@ const createServer = ({
         }
       };
 
-      const serverRequest: ClientRequest = parsedSSL.request(options, (serverResponse) => {
-        // No need to check for redirects. Puppeteer will make sure final validURL exists
-        callback(serverResponse, clientResponse);
-      });
+      const serverRequest: ClientRequest = parsedSSL.request(
+        options,
+        (serverResponse) => {
+          // No need to check for redirects. Puppeteer will make sure final validURL exists
+          callback(serverResponse, clientResponse);
+        }
+      );
 
       serverRequest.on('error', (e) => {
         serverRequest.end();
@@ -523,5 +621,10 @@ const createServer = ({
   app.listen(PORT);
   logger.info(`Running on ${PATH}`);
 };
+
+createServer({
+  SERVER_ROOT: 'http://localhost',
+  PORT: 3100,
+});
 
 export { createServer };
