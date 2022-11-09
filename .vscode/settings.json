@@ -1,0 +1,9 @@
+{
+  "eslint.options": {
+    "configFile": "./.eslintrc.js"
+  },
+  "[typescript]": {
+    // "editor.defaultFormatter": "vscode.typescript-language-features"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
